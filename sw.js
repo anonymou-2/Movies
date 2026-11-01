@@ -47,9 +47,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
     
-    // 1. Block Ads strictly by hostname
     if (BLOCKED_HOSTS.some(h => url.hostname === h || url.hostname.endsWith('.' + h))) {
         e.respondWith(new Response("", { status: 204 })); 
+        return;
+    }
+});atus: 204 })); 
         return;
     }
 

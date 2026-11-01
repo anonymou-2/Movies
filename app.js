@@ -1,3 +1,14 @@
+window.onerror = function(msg, url, line, col, error) {
+    document.getElementById('app').innerHTML = `
+        <div style="color:red; padding:20px; font-family:monospace; background:#000; min-height:100vh;">
+            <h3 style="margin-bottom:10px;">JavaScript Error</h3>
+            <p style="margin-bottom:10px; font-size:14px;">${msg}</p>
+            <p style="font-size:12px; color:#aaa;">Line: ${line}</p>
+            <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#E50914; color:white; border:none; border-radius:4px;">Reload</button>
+        </div>
+    `;
+};
+
 const TMDB_KEY = 'd3f5523547e31eaeb2b23ae2f28ab164';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -27,11 +38,14 @@ async function api(path, query = {}) {
     url.searchParams.append('api_key', TMDB_KEY);
     Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
     
+    // Add cache bust to avoid stale responses if key changes
+    url.searchParams.append('_t', Date.now());
+
     const res = await fetch(url);
     const json = await res.json();
     
     if (!res.ok || json.success === false) {
-        throw new Error(json.status_message || 'API Error');
+        throw new Error(json.status_message || `API Error: ${res.status}`);
     }
     return json;
 }
@@ -41,7 +55,7 @@ let currentView = 'home';
 let previousViews = [];
 
 function navigate(view, data = {}) {
-    if (currentView) previousViews.push({ view: currentView, data });
+    if (currentView && currentView !== view) previousViews.push({ view: currentView, data });
     currentView = view;
     window.scrollTo(0, 0);
     
@@ -101,7 +115,13 @@ async function renderHome() {
 
         document.getElementById('home-content').innerHTML = html;
     } catch (e) {
-        document.getElementById('home-content').innerHTML = `<p style="color:red;text-align:center;padding:20px;">Error: ${e.message}</p>`;
+        document.getElementById('home-content').innerHTML = `
+            <div style="color:red;text-align:center;padding:20px;">
+                <p>Failed to load data.</p>
+                <p style="font-size:12px; margin-top:10px;">${e.message}</p>
+                <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#E50914; color:white; border:none; border-radius:4px;">Retry</button>
+            </div>
+        `;
     }
 }
 
@@ -211,3 +231,7 @@ function openPlayer(id, isTv, title, season = 1, episode = 1) {
 function setSource(url) {
     document.getElementById('video-frame').src = url;
 }
+
+// ── BOOT THE APP ──
+// THIS WAS THE MISSING LINE!
+navigate('home');
