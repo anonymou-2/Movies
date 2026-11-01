@@ -1,3 +1,15 @@
+// Catch any syntax or runtime error and display it on screen
+window.addEventListener('error', function(event) {
+    document.getElementById('app').innerHTML = `
+        <div style="color:red; padding:20px; font-family:monospace; background:#000; min-height:100vh;">
+            <h3 style="margin-bottom:10px;">App Crashed</h3>
+            <p style="margin-bottom:10px; font-size:14px;">${event.message}</p>
+            <p style="font-size:12px; color:#aaa;">At: ${event.filename}:${event.lineno}</p>
+            <button style="margin-top:20px; padding:10px 20px; background-color:#E50914; color:white; border:none; border-radius:4px; font-weight:bold;" onclick="location.reload()">Reload App</button>
+        </div>
+    `;
+});
+
 const TMDB_KEY = 'd3f5523547e31eaeb2b23ae2f28ab164';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -5,7 +17,6 @@ const IMG_BG = 'https://image.tmdb.org/t/p/original';
 
 const app = document.getElementById('app');
 
-// ── Sources ──
 const SOURCES = [
     { name: "VidSrc.to", url: id => `https://vidsrc.to/embed/movie/${id}` },
     { name: "VidLink", url: id => `https://vidlink.pro/movie/${id}` },
@@ -21,15 +32,19 @@ const TV_SOURCES = [
     { name: "Embed.su", url: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` }
 ];
 
-// ── API ──
 async function api(path, query = {}) {
-    try {
-        const url = new URL(`${TMDB_BASE}${path}`);
-        url.searchParams.append('api_key', TMDB_KEY);
-        Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
-        url.searchParams.append('_t', Date.now());
+    const url = new URL(`${TMDB_BASE}${path}`);
+    url.searchParams.append('api_key', TMDB_KEY);
+    Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
+    url.searchParams.append('_t', Date.now());
 
-        const res = await fetch(url);
+    // 10-second timeout so it never hangs forever
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         const json = await res.json();
         
         if (!res.ok || json.success === false) {
@@ -37,11 +52,11 @@ async function api(path, query = {}) {
         }
         return json;
     } catch (e) {
+        if (e.name === 'AbortError') throw new Error("Request timed out. Is Brave blocking TMDb?");
         throw new Error(e.message || "Network Error");
     }
 }
 
-// ── UI State ──
 let currentView = 'home';
 let previousViews = [];
 
@@ -66,14 +81,13 @@ function goBack() {
     }
 }
 
-// ── Renderers ──
 async function renderHome() {
     app.innerHTML = `
         <div class="topbar">
             <div class="brand">N MOVIES</div>
             <button class="icon-btn" onclick="navigate('search')">🔍</button>
         </div>
-        <div id="home-content"><p style="text-align:center;padding:50px;color:#888;">Loading TMDb...</p></div>
+        <div id="home-content"><p style="text-align:center;padding:50px;color:#888;">Fetching from TMDb...</p></div>
     `;
 
     try {
@@ -139,7 +153,6 @@ function buildRow(title, items, isTv) {
     `;
 }
 
-// ── Search Screen ──
 function renderSearch() {
     app.innerHTML = `
         <div class="topbar">
@@ -262,7 +275,6 @@ async function renderDetail(id, isTv) {
     }
 }
 
-// ── Player ──
 function openPlayer(id, isTv, title, season = 1, episode = 1) {
     const sources = isTv ? TV_SOURCES : SOURCES;
     const overlay = document.createElement('div');
@@ -291,23 +303,9 @@ function setSource(url) {
     document.getElementById('video-frame').src = url;
 }
 
-// ── BOOT THE APP ──
-navigate('home');erflow-x:auto; background:#111; white-space:nowrap;">
-            ${sources.map((s, i) => `<button class="btn-secondary" onclick="setSource('${s.url(id, season, episode)}')" style="font-size:12px; padding:8px 12px;">${s.name}</button>`).join('')}
-        </div>
-        <iframe id="video-frame" class="player-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-    `;
-    
-    document.body.appendChild(overlay);
-    overlay.style.display = 'flex';
-    
-    const firstUrl = isTv ? sources[0].url(id, season, episode) : sources[0].url(id);
-    document.getElementById('video-frame').src = firstUrl;
+// Start the app safely
+try {
+    navigate('home');
+} catch(e) {
+    document.getElementById('app').innerHTML = `<p style="color:red;text-align:center;padding:20px;">Boot Error: ${e.message}</p>`;
 }
-
-function setSource(url) {
-    document.getElementById('video-frame').src = url;
-}
-
-// ── BOOT THE APP ──
-navigate('home');
