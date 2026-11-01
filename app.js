@@ -1,14 +1,3 @@
-window.onerror = function(msg, url, line, col, error) {
-    document.getElementById('app').innerHTML = `
-        <div style="color:red; padding:20px; font-family:monospace; background:#000; min-height:100vh;">
-            <h3 style="margin-bottom:10px;">JavaScript Error</h3>
-            <p style="margin-bottom:10px; font-size:14px;">${msg}</p>
-            <p style="font-size:12px; color:#aaa;">Line: ${line}</p>
-            <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#E50914; color:white; border:none; border-radius:4px;">Reload</button>
-        </div>
-    `;
-};
-
 const TMDB_KEY = 'd3f5523547e31eaeb2b23ae2f28ab164';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -34,18 +23,22 @@ const TV_SOURCES = [
 
 // ── API ──
 async function api(path, query = {}) {
-    const url = new URL(`${TMDB_BASE}${path}`);
-    url.searchParams.append('api_key', TMDB_KEY);
-    Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
-    url.searchParams.append('_t', Date.now());
+    try {
+        const url = new URL(`${TMDB_BASE}${path}`);
+        url.searchParams.append('api_key', TMDB_KEY);
+        Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
+        url.searchParams.append('_t', Date.now());
 
-    const res = await fetch(url);
-    const json = await res.json();
-    
-    if (!res.ok || json.success === false) {
-        throw new Error(json.status_message || `API Error: ${res.status}`);
+        const res = await fetch(url);
+        const json = await res.json();
+        
+        if (!res.ok || json.success === false) {
+            throw new Error(json.status_message || `API Error: ${res.status}`);
+        }
+        return json;
+    } catch (e) {
+        throw new Error(e.message || "Network Error");
     }
-    return json;
 }
 
 // ── UI State ──
@@ -119,7 +112,7 @@ async function renderHome() {
             <div style="color:red;text-align:center;padding:20px;">
                 <p>Failed to load data.</p>
                 <p style="font-size:12px; margin-top:10px;">${e.message}</p>
-                <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#E50914; color:white; border:none; border-radius:4px;">Retry</button>
+                <button class="btn-primary" style="margin: 20px auto; display: block;" onclick="location.reload()">Retry</button>
             </div>
         `;
     }
@@ -269,7 +262,7 @@ async function renderDetail(id, isTv) {
     }
 }
 
-// ── Player (Sandbox Removed) ──
+// ── Player ──
 function openPlayer(id, isTv, title, season = 1, episode = 1) {
     const sources = isTv ? TV_SOURCES : SOURCES;
     const overlay = document.createElement('div');
@@ -282,6 +275,24 @@ function openPlayer(id, isTv, title, season = 1, episode = 1) {
             <div style="width:24px;"></div>
         </div>
         <div style="padding:10px; display:flex; gap:10px; overflow-x:auto; background:#111; white-space:nowrap;">
+            ${sources.map((s, i) => `<button class="btn-secondary" onclick="setSource('${s.url(id, season, episode)}')" style="font-size:12px; padding:8px 12px;">${s.name}</button>`).join('')}
+        </div>
+        <iframe id="video-frame" class="player-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    `;
+    
+    document.body.appendChild(overlay);
+    overlay.style.display = 'flex';
+    
+    const firstUrl = isTv ? sources[0].url(id, season, episode) : sources[0].url(id);
+    document.getElementById('video-frame').src = firstUrl;
+}
+
+function setSource(url) {
+    document.getElementById('video-frame').src = url;
+}
+
+// ── BOOT THE APP ──
+navigate('home');erflow-x:auto; background:#111; white-space:nowrap;">
             ${sources.map((s, i) => `<button class="btn-secondary" onclick="setSource('${s.url(id, season, episode)}')" style="font-size:12px; padding:8px 12px;">${s.name}</button>`).join('')}
         </div>
         <iframe id="video-frame" class="player-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
