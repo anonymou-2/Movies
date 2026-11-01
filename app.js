@@ -37,8 +37,6 @@ async function api(path, query = {}) {
     const url = new URL(`${TMDB_BASE}${path}`);
     url.searchParams.append('api_key', TMDB_KEY);
     Object.keys(query).forEach(k => url.searchParams.append(k, query[k]));
-    
-    // Add cache bust to avoid stale responses if key changes
     url.searchParams.append('_t', Date.now());
 
     const res = await fetch(url);
@@ -60,6 +58,7 @@ function navigate(view, data = {}) {
     window.scrollTo(0, 0);
     
     if (view === 'home') renderHome();
+    else if (view === 'search') renderSearch();
     else if (view === 'detail') renderDetail(data.id, data.isTv);
 }
 
@@ -69,6 +68,7 @@ function goBack() {
         currentView = prev.view;
         window.scrollTo(0, 0);
         if (prev.view === 'home') renderHome();
+        else if (prev.view === 'search') renderSearch();
         else if (prev.view === 'detail') renderDetail(prev.data.id, prev.data.isTv);
     }
 }
@@ -78,7 +78,7 @@ async function renderHome() {
     app.innerHTML = `
         <div class="topbar">
             <div class="brand">N MOVIES</div>
-            <button class="icon-btn" onclick="alert('Search coming soon')">🔍</button>
+            <button class="icon-btn" onclick="navigate('search')">🔍</button>
         </div>
         <div id="home-content"><p style="text-align:center;padding:50px;color:#888;">Loading TMDb...</p></div>
     `;
@@ -146,6 +146,73 @@ function buildRow(title, items, isTv) {
     `;
 }
 
+// ── Search Screen ──
+function renderSearch() {
+    app.innerHTML = `
+        <div class="topbar">
+            <button class="icon-btn" onclick="goBack()">←</button>
+            <div class="brand" style="font-size: 20px;">Search</div>
+            <div style="width: 24px;"></div>
+        </div>
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search movies & shows..." autocomplete="off">
+        </div>
+        <div id="search-results"></div>
+    `;
+
+    const input = document.getElementById('search-input');
+    const results = document.getElementById('search-results');
+    let timeout = null;
+
+    input.focus();
+
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(timeout);
+
+        if (query.length < 2) {
+            results.innerHTML = `<p style="text-align:center;color:#888;margin-top:40px;">Type at least 2 letters</p>`;
+            return;
+        }
+
+        results.innerHTML = `<p style="text-align:center;color:#888;margin-top:40px;">Searching...</p>`;
+
+        timeout = setTimeout(async () => {
+            try {
+                const [movies, tv] = await Promise.all([
+                    api('/search/movie', { query, include_adult: true }),
+                    api('/search/tv', { query, include_adult: true })
+                ]);
+
+                const allResults = [
+                    ...movies.results.map(m => ({ ...m, isTv: false })),
+                    ...tv.results.map(t => ({ ...t, isTv: true }))
+                ].sort((a, b) => b.popularity - a.popularity);
+
+                if (allResults.length === 0) {
+                    results.innerHTML = `<p style="text-align:center;color:#888;margin-top:40px;">No results found</p>`;
+                    return;
+                }
+
+                let cards = allResults.map(item => {
+                    const img = item.poster_path ? `${IMG_BASE}${item.poster_path}` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                    const name = item.isTv ? item.name : item.title;
+                    return `
+                        <div class="card" onclick="navigate('detail', {id: ${item.id}, isTv: ${item.isTv}})">
+                            <img class="poster" src="${img}" loading="lazy">
+                            <div class="card-title">${name}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                results.innerHTML = `<div class="grid">${cards}</div>`;
+            } catch (error) {
+                results.innerHTML = `<p style="text-align:center;color:red;margin-top:40px;">Error: ${error.message}</p>`;
+            }
+        }, 350);
+    });
+}
+
 async function renderDetail(id, isTv) {
     app.innerHTML = `<div class="topbar"><button class="icon-btn" onclick="goBack()">←</button></div><p style="text-align:center;padding:50px;color:#888;">Loading...</p>`;
 
@@ -202,7 +269,7 @@ async function renderDetail(id, isTv) {
     }
 }
 
-// ── Player ──
+// ── Player (Sandbox Removed) ──
 function openPlayer(id, isTv, title, season = 1, episode = 1) {
     const sources = isTv ? TV_SOURCES : SOURCES;
     const overlay = document.createElement('div');
@@ -217,13 +284,12 @@ function openPlayer(id, isTv, title, season = 1, episode = 1) {
         <div style="padding:10px; display:flex; gap:10px; overflow-x:auto; background:#111; white-space:nowrap;">
             ${sources.map((s, i) => `<button class="btn-secondary" onclick="setSource('${s.url(id, season, episode)}')" style="font-size:12px; padding:8px 12px;">${s.name}</button>`).join('')}
         </div>
-        <iframe id="video-frame" class="player-frame" allow="autoplay; fullscreen; encrypted-media" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"></iframe>
+        <iframe id="video-frame" class="player-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
     `;
     
     document.body.appendChild(overlay);
     overlay.style.display = 'flex';
     
-    // Set initial source
     const firstUrl = isTv ? sources[0].url(id, season, episode) : sources[0].url(id);
     document.getElementById('video-frame').src = firstUrl;
 }
@@ -233,5 +299,4 @@ function setSource(url) {
 }
 
 // ── BOOT THE APP ──
-// THIS WAS THE MISSING LINE!
 navigate('home');
