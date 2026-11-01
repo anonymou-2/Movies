@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>N Movies</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+</head>
+<body>
+    <!-- Loading state so it's never a blank black screen -->
+    <div id="app">
+        <div style="display:flex; justify-content:center; align-items:center; height:100vh; color:white; font-family:sans-serif;">
+            Loading...
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                console.log('Ad-Blocker SW Registered', reg);
+            }).catch(err => console.error('SW failed', err));
+        }
+    </script>
+</body>
+</html>

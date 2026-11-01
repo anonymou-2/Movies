@@ -1,0 +1,16 @@
+{
+    "name": "N Movies",
+    "short_name": "N Movies",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "icons": [
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9Ijk2IiBmaWxsPSIjMEIwQjBGIi8+PHBhdGggZD0iTTE1MCAxMjAgTDE1MCAzOTIgTDIwMCAzOTIgTDIwMCAyMjAgTDMxMiAzOTIgTDM2MiAzOTIgTDM2MiAxMjAgTDMxMiAxMjAgTDMxMiAyOTIgTDIwMCAxMjAgWiIgZmlsbD0iI0U1MDkxNCIvPjwvc3ZnPg==",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
